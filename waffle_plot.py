@@ -130,7 +130,7 @@ def waffle_plot(
     # condition variable for 'while' loop for auto-scaling
     condition = False
 
-    while condition is not True:
+    while condition is False:
 
         total = width * height
 
