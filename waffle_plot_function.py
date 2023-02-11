@@ -127,10 +127,10 @@ def waffle_plot(
 
     proportions_cmap = [(float(v) / sum(values)) for v in values if v > 0]
 
-    # condition variable for 'while' loop for auto-scaling
-    condition = False
+    # autoscaling_done - a condition variable for 'while' loop for auto-scaling
+    autoscaling_done = False
 
-    while condition is False:
+    while autoscaling_done is False:
 
         total = width * height
 
@@ -175,13 +175,13 @@ def waffle_plot(
         ):
 
             if autoscale:
-                condition = False
+                autoscaling_done = False
                 width += 1
                 height += 1
             else:
-                condition = True
+                autoscaling_done = True
         else:
-            condition = True
+            autoscaling_done = True
 
     # Getting number of bins. We don't need bins for empty (== 0) categories, 
     # we are only counting non-zero values
