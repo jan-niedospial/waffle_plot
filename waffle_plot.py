@@ -196,6 +196,11 @@ def create_waffle_array(
     categories, values, width, height, autoscale, over_represent, vertical
 ):
 
+    """
+    Helper function for waffle_plot. Creates an array used by matshow to
+    visualise the proportions.
+    """
+
     # Getting sorted categories and values
     categories, values = zip(
         *sorted(zip(categories, values), key=lambda x: x[1], reverse=True)
@@ -290,6 +295,10 @@ def color_mapper(
     values_non_zero,
     proportions_non_zero,
 ):
+
+    """
+    Helper function for waffle_plot. Maps colors and colormap to plot and legend.
+    """
 
     # Getting number of categories
 
