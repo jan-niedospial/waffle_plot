@@ -101,121 +101,29 @@ def waffle_plot(
 
     """
 
-    # Getting sorted categories and values
-    categories, values = zip(
-        *sorted(zip(categories, values), key=lambda x: x[1], reverse=True)
+    (
+        waffle,
+        proportions,
+        height,
+        width,
+        values_non_zero,
+        proportions_non_zero,
+    ) = create_waffle_array(
+        categories, values, width, height, autoscale, over_represent, vertical
     )
 
-    # Getting number of categories
-    n_categories = len(categories)
-
-    cmap = cmap.resampled(len(categories))
-
-    if c is None:
-
-        c = [cmap(x) for x in range(len(categories))]
-
-    else:
-        # If there are fewer colors than categories...
-        if len(c) < len(categories):
-            # Extend list c with appropriate number of colors from colormap
-            c.extend([cmap(x) for x in range(len(categories))][len(c) :])
-
-        if len(c) > len(categories):
-            # Cutting colour list in case we have more colours than categories
-            c = c[:n_categories]
-
-    proportions_cmap = [(float(v) / sum(values)) for v in values if v > 0]
-
-    # autoscaling_done - a condition variable for 'while' loop for auto-scaling
-    autoscaling_done = False
-
-    while autoscaling_done is False:
-
-        total = width * height
-
-        tiles_per_category = [
-            round(proportion * total) for proportion in proportions_cmap
-        ]
-
-        # Make a dummy matrix for use in plotting.
-        waffle = [[0 for col in range(width)] for row in range(height)]
-
-        # Popoulate the dummy matrix with integer values.
-        category_index = 0
-        tile_index = 0
-
-        if vertical:
-            x = width # i is a row
-            y = height # j is a col
-        else:
-            x = height # i is a col
-            y = width # j is a row
-
-        # Iterate over each tile.
-        for i in range(x):
-            for j in range(y):
-                tile_index += 1
-
-                # If the number of tiles populated is sufficient for 
-                # this category...
-                if tile_index > sum(tiles_per_category[0:category_index]):
-                    # ...increment to the next category.
-                    category_index += 1
-
-                # Set the category value to an integer, which increases 
-                # with category.
-                if vertical:
-                    waffle[j][i] = category_index
-                else:
-                    waffle[i][j] = category_index
-
-        if len(set([item for sublist in waffle for item in sublist])) < len(
-            proportions_cmap
-        ):
-
-            if autoscale:
-                autoscaling_done = False
-                width += 1
-                height += 1
-            else:
-                autoscaling_done = True
-        else:
-            autoscaling_done = True
-
-    # Getting number of bins. We don't need bins for empty (== 0) categories, 
-    # we are only counting non-zero values
-    n_bins = len([val for val in values if val != 0])
-
-    if autoscale is False:
-        # If number of unique values in waffle is smaller than number of bins,
-        # reduce number of bins
-        if len(set([i for sublist in waffle for i in sublist])) < n_bins:
-            n_bins = len(set([i for sublist in waffle for i in sublist]))
-
-    # Instead of 'c', using special version 'c_for_cmap', that is cut at 
-    # the length equal to number of bins
-    c_for_cmap = c[:n_bins]
-
-    if not over_represent and len(c_for_cmap) == len(
-        [val for val in values if val != 0]
-    ):
-        for i in proportions_cmap:
-            if i < 0.5 * (1 / (height * width)):
-                c_for_cmap[-1] = bc
-
-    if any(values) != 0:
-
-        # Constructing colormap
-        cmap_name = "the_cmap"
-        cmap = LinearSegmentedColormap.from_list(
-            cmap_name, c_for_cmap, N=n_bins)
-
-        # Compute the portion of the total assigned to each category.
-        proportions = [(value / sum(values)) for value in values]
-
-    else:
-        proportions = [1 for v in values] # Just so it does not throw an error
+    cmap, c, c_for_cmap = color_mapper(
+        categories,
+        values,
+        height,
+        width,
+        cmap,
+        c,
+        bc,
+        over_represent,
+        values_non_zero,
+        proportions_non_zero,
+    )
 
     # Grid line auto-adjustment
     if height < 25 and width < 25:
@@ -233,7 +141,7 @@ def waffle_plot(
         # Visualisng the waffle array as waffle plot, only transparent
         ax.matshow(waffle, alpha=0)
 
-    # With colours control, to not get an empty plot for only one not empty 
+    # With colours control, to not get an empty plot for only one not empty
     # category, a facecolor has to be set. Same for the special case of
     # empty waffle.
 
@@ -260,35 +168,9 @@ def waffle_plot(
     values_cumsum = [sum(values[: i + 1]) for i in range(len(values))]
     total_values = values_cumsum[len(values_cumsum) - 1]
 
-    # Empty list, that will be filled with legend handles
-    legend_handles = []
-
-    # Constructing the legend. Depending on the controls, it can have:
-
-    for i, (category, colour) in enumerate(zip(categories, c)):
-        if label_v and not label_p: # Values only, with the sign or without it
-            if value_sign == "%":
-                label_str = f"{category} ({values[i]}{value_sign})"
-            else:
-                label_str = f"{category} ({value_sign}{values[i]})"
-
-        elif label_v and label_p: #Values and percentages calculated automatically
-            if value_sign == "%":
-                label_str = (
-                    f"{category}: {values[i]}{value_sign} ({proportions[i] * 100:.2f}%)"
-                )
-            else:
-                label_str = (
-                    f"{category}: {value_sign}{values[i]} ({proportions[i] * 100:.2f}%)"
-                )
-
-        elif not label_v and label_p: # only percentages calculated automatically
-            label_str = f"{category} ({proportions[i] * 100:.2f}%)"
-
-        if not label_v and not label_p: # The name of the category only
-            label_str = f"{category}"
-            
-        legend_handles.append(mpatches.Patch(color=c[i], label=label_str))
+    legend_handles = prepare_legend_handles(
+        categories, values, c, proportions, label_v, label_p, value_sign
+    )
 
     # Add the legend
     l = ax.legend(
@@ -308,3 +190,182 @@ def waffle_plot(
 
     else:
         plt.show()
+
+
+def create_waffle_array(
+    categories, values, width, height, autoscale, over_represent, vertical
+):
+
+    # Getting sorted categories and values
+    categories, values = zip(
+        *sorted(zip(categories, values), key=lambda x: x[1], reverse=True)
+    )
+
+    values_non_zero = len([val for val in values if val != 0])
+    proportions_non_zero = [(float(v) / sum(values)) for v in values if v > 0]
+
+    # autoscaling_done - a condition variable for 'while' loop for auto-scaling
+    autoscaling_done = False
+
+    while autoscaling_done is False:
+
+        total = width * height
+
+        tiles_per_category = [
+            round(proportion * total) for proportion in proportions_non_zero
+        ]
+
+        # Make a dummy matrix for use in plotting.
+        waffle = [[0 for col in range(width)] for row in range(height)]
+
+        # Popoulate the dummy matrix with integer values.
+        category_index = 0
+        tile_index = 0
+
+        if vertical:
+            x = width  # i is a row
+            y = height  # j is a col
+        else:
+            x = height  # i is a col
+            y = width  # j is a row
+
+        # Iterate over each tile.
+        for i in range(x):
+            for j in range(y):
+                tile_index += 1
+
+                # If the number of tiles populated is sufficient for
+                # this category...
+                if tile_index > sum(tiles_per_category[0:category_index]):
+                    # ...increment to the next category.
+                    category_index += 1
+
+                # Set the category value to an integer, which increases
+                # with category.
+                if vertical:
+                    waffle[j][i] = category_index
+                else:
+                    waffle[i][j] = category_index
+
+        if len(set([item for sublist in waffle for item in sublist])) < len(
+            proportions_non_zero
+        ):
+
+            if autoscale:
+                autoscaling_done = False
+                width += 1
+                height += 1
+            else:
+                autoscaling_done = True
+        else:
+            autoscaling_done = True
+
+    if autoscale is False:
+        # If number of unique values in waffle is smaller than number of bins,
+        # reduce number of bins
+
+        if len(set([i for sublist in waffle for i in sublist])) < values_non_zero:
+            values_non_zero = len(set([i for sublist in waffle for i in sublist]))
+
+    if any(values) != 0:
+
+        # Compute the portion of the total assigned to each category.
+        proportions = [(value / sum(values)) for value in values]
+
+    else:
+        proportions = [1 for v in values]  # Just so it does not throw an error
+
+    return waffle, proportions, height, width, values_non_zero, proportions_non_zero
+
+
+def color_mapper(
+    categories,
+    values,
+    height,
+    width,
+    cmap,
+    c,
+    bc,
+    over_represent,
+    values_non_zero,
+    proportions_non_zero,
+):
+
+    # Getting number of categories
+
+    cmap = cmap.resampled(len(categories))
+
+    # Getting number of bins. We don't need bins for empty (== 0) categories,
+    # we are only counting non-zero values
+
+    if c is None:
+
+        c = [cmap(x) for x in range(len(categories))]
+
+    else:
+        # If there are fewer colors than categories...
+        if len(c) < len(categories):
+            # Extend list c with appropriate number of colors from colormap
+            c.extend([cmap(x) for x in range(len(categories))][len(c) :])
+
+        elif len(c) > len(categories):
+            # Cutting colour list in case we have more colours than categories
+            c = c[: len(categories)]
+
+    # Instead of 'c', using special version 'c_for_cmap', that is cut at
+    # the length equal to number of bins
+
+    c_for_cmap = c[:values_non_zero]
+
+    if not over_represent and len(c_for_cmap) == len(
+        [val for val in values if val != 0]
+    ):
+        for i in proportions_non_zero:
+            if i < 0.5 * (1 / (height * width)):
+                c_for_cmap[-1] = bc
+
+    if any(values) != 0:
+
+        # Constructing colormap
+        cmap_name = "the_cmap"
+        cmap = LinearSegmentedColormap.from_list(
+            cmap_name, c_for_cmap, N=values_non_zero
+        )
+
+    return cmap, c, c_for_cmap
+
+
+def prepare_legend_handles(
+    categories, values, c, proportions, label_v, label_p, value_sign
+):
+
+    # Empty list, that will be filled with legend handles
+    legend_handles = []
+
+    # Constructing the legend. Depending on the controls, it can have:
+    for i, (category, colour) in enumerate(zip(categories, c)):
+        if label_v and not label_p:  # Values only, with the sign or without it
+            if value_sign == "%":
+                label_str = f"{category} ({values[i]}{value_sign})"
+            else:
+                label_str = f"{category} ({value_sign}{values[i]})"
+
+        elif label_v and label_p:  # Values and percentages calculated automatically
+            if value_sign == "%":
+                label_str = (
+                    f"{category}: {values[i]}{value_sign} ({proportions[i] * 100:.2f}%)"
+                )
+            else:
+                label_str = (
+                    f"{category}: {value_sign}{values[i]} ({proportions[i] * 100:.2f}%)"
+                )
+
+        elif not label_v and label_p:  # only percentages calculated automatically
+            label_str = f"{category} ({proportions[i] * 100:.2f}%)"
+
+        if not label_v and not label_p:  # The name of the category only
+            label_str = f"{category}"
+
+        legend_handles.append(mpatches.Patch(color=c[i], label=label_str))
+
+    return legend_handles

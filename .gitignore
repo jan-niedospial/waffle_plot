@@ -1,1 +1,5 @@
 *.bak
+test.py
+corrections.txt
+*__pycache__*
+*.ipynb_checkpoints*
