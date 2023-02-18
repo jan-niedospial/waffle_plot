@@ -1,4 +1,4 @@
-# Waffle plot function
+# Waffle Plot function
 
 The idea behind building it it was to create a reliable, easy-to-use yet customizable waffle plot that wouldn't require any not-widely-used libraries (it only requires native Python and matplotlib). It is supposed to be resilient enough to be used in most scenarios even in automated processing, much like plots in matplotlib.
 
