@@ -4,6 +4,8 @@ The idea behind building it it was to create a reliable, easy-to-use yet customi
 
 As a result the function is slightly over-engineered to account for some unusual scenarios that can easily happen in automated processing.
 
+One thing not covered in the examples is changing the default values for keyword arguments in the function. Please feel free to experiment with them if the current ones don't meet your needs.
+
 # Attributions
 The function was based on the brilliant piece of code by Justin Fletcher, posted on Stack Overflow on 03 Jan 2017.
 
