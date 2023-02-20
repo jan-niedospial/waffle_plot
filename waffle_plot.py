@@ -101,28 +101,26 @@ def waffle_plot(
 
     """
 
-    (
-        waffle,
-        proportions,
-        height,
-        width,
-        values_non_zero,
-        proportions_non_zero,
-    ) = create_waffle_array(
+    # Instantiate Waffle class
+    waffle = Waffle(
         categories, values, width, height, autoscale, over_represent, vertical
     )
 
+    # Create waffle attributes - an array and its' aspects
+    waffle.create_array()
+
+    # Assigne colormaps and colors with color mapper function
     cmap, c, c_for_cmap = color_mapper(
         categories,
         values,
-        height,
-        width,
         cmap,
         c,
         bc,
         over_represent,
-        values_non_zero,
-        proportions_non_zero,
+        waffle.height,
+        waffle.width,
+        waffle.values_non_zero,
+        waffle.proportions_non_zero,
     )
 
     # Grid line auto-adjustment
@@ -136,12 +134,12 @@ def waffle_plot(
 
     if len(c_for_cmap) > 1:
         # Visualisng the waffle array as waffle plot
-        ax.matshow(waffle, cmap=cmap)
+        ax.matshow(waffle.array, cmap=cmap)
     else:
         # Visualisng the waffle array as waffle plot, only transparent
-        ax.matshow(waffle, alpha=0)
+        ax.matshow(waffle.array, alpha=0)
 
-    # With colours control, to not get an empty plot for only one not empty
+    # With color control, to not get an empty plot for only one not empty
     # category, a facecolor has to be set. Same for the special case of
     # empty waffle.
 
@@ -151,8 +149,8 @@ def waffle_plot(
         ax.set_facecolor(c[0])
 
     # Minor ticks
-    ax.set_xticks([x - 0.5 for x in range(width)], minor=True)
-    ax.set_yticks([x - 0.5 for x in range(height)], minor=True)
+    ax.set_xticks([x - 0.5 for x in range(waffle.width)], minor=True)
+    ax.set_yticks([x - 0.5 for x in range(waffle.height)], minor=True)
 
     # Switch the sticking out ticks off (by setting length to 0):
     ax.tick_params(axis="both", which="both", length=0)
@@ -169,7 +167,7 @@ def waffle_plot(
     total_values = values_cumsum[len(values_cumsum) - 1]
 
     legend_handles = prepare_legend_handles(
-        categories, values, c, proportions, label_v, label_p, value_sign
+        categories, values, c, waffle.proportions, label_v, label_p, value_sign
     )
 
     # Add the legend
@@ -192,112 +190,142 @@ def waffle_plot(
         plt.show()
 
 
-def create_waffle_array(
-    categories, values, width, height, autoscale, over_represent, vertical
-):
+class Waffle:
 
     """
-    Helper function for waffle_plot. Creates an array used by matshow to
-    visualise the proportions.
+    Helper class for waffle_plot. Creates a waffle instance of waffle array and array
+    features.
     """
 
-    # Getting sorted categories and values
-    categories, values = zip(
-        *sorted(zip(categories, values), key=lambda x: x[1], reverse=True)
-    )
+    def __init__(
+        self, categories, values, width, height, autoscale, over_represent, vertical
+    ):
+        self.categories = categories
+        self.values = values
+        self.width = width
+        self.height = height
+        self.autoscale = autoscale
+        self.over_represent = over_represent
+        self.vertical = vertical
 
-    values_non_zero = len([val for val in values if val != 0])
-    proportions_non_zero = [(float(v) / sum(values)) for v in values if v > 0]
+    def create_array(self):
 
-    # autoscaling_done - a condition variable for 'while' loop for auto-scaling
-    autoscaling_done = False
+        # Getting sorted categories and values
+        self.categories, self.values = zip(
+            *sorted(zip(self.categories, self.values), key=lambda x: x[1], reverse=True)
+        )
 
-    while autoscaling_done is False:
-
-        total = width * height
-
-        tiles_per_category = [
-            round(proportion * total) for proportion in proportions_non_zero
+        self.values_non_zero = len([val for val in self.values if val != 0])
+        self.proportions_non_zero = [
+            (float(v) / sum(self.values)) for v in self.values if v > 0
         ]
 
-        # Make a dummy matrix for use in plotting.
-        waffle = [[0 for col in range(width)] for row in range(height)]
+        # autoscaling_done - a condition variable for 'while' loop for auto-scaling
+        autoscaling_done = False
 
-        # Popoulate the dummy matrix with integer values.
-        category_index = 0
-        tile_index = 0
+        while autoscaling_done is False:
 
-        if vertical:
-            x = width  # i is a row
-            y = height  # j is a col
-        else:
-            x = height  # i is a col
-            y = width  # j is a row
+            total = self.width * self.height
 
-        # Iterate over each tile.
-        for i in range(x):
-            for j in range(y):
-                tile_index += 1
+            tiles_per_category = [
+                round(proportion * total) for proportion in self.proportions_non_zero
+            ]
 
-                # If the number of tiles populated is sufficient for
-                # this category...
-                if tile_index > sum(tiles_per_category[0:category_index]):
-                    # ...increment to the next category.
-                    category_index += 1
+            # Make a dummy matrix for use in plotting.
+            self.array = [
+                [0 for col in range(self.width)] for row in range(self.height)
+            ]
 
-                # Set the category value to an integer, which increases
-                # with category.
-                if vertical:
-                    waffle[j][i] = category_index
+            # Popoulate the dummy matrix with integer values.
+            category_index = 0
+            tile_index = 0
+
+            if self.vertical:
+                x = self.width  # i is a row
+                y = self.height  # j is a col
+            else:
+                x = self.height  # i is a col
+                y = self.width  # j is a row
+
+            # Iterate over each tile.
+            for i in range(x):
+                for j in range(y):
+                    tile_index += 1
+
+                    # If the number of tiles populated is sufficient for
+                    # this category...
+                    if tile_index > sum(tiles_per_category[0:category_index]):
+                        # ...increment to the next category.
+                        category_index += 1
+
+                    # Set the category value to an integer, which increases
+                    # with category.
+                    if self.vertical:
+                        self.array[j][i] = category_index
+                    else:
+                        self.array[i][j] = category_index
+
+            if len(set([item for sublist in self.array for item in sublist])) < len(
+                self.proportions_non_zero
+            ):
+
+                if self.autoscale:
+                    autoscaling_done = False
+                    self.width += 1
+                    self.height += 1
                 else:
-                    waffle[i][j] = category_index
-
-        if len(set([item for sublist in waffle for item in sublist])) < len(
-            proportions_non_zero
-        ):
-
-            if autoscale:
-                autoscaling_done = False
-                width += 1
-                height += 1
+                    autoscaling_done = True
             else:
                 autoscaling_done = True
+
+        if self.autoscale is False:
+            # If number of unique values in waffle is smaller than number of bins,
+            # reduce number of bins
+
+            if (
+                len(set([i for sublist in self.array for i in sublist]))
+                < self.values_non_zero
+            ):
+                self.values_non_zero = len(
+                    set([i for sublist in self.array for i in sublist])
+                )
+
+        if any(self.values) != 0:
+
+            # Compute the portion of the total assigned to each category.
+            self.proportions = [(value / sum(self.values)) for value in self.values]
+
         else:
-            autoscaling_done = True
+            self.proportions = [
+                1 for v in self.values
+            ]  # Just so it does not throw an error
 
-    if autoscale is False:
-        # If number of unique values in waffle is smaller than number of bins,
-        # reduce number of bins
-
-        if len(set([i for sublist in waffle for i in sublist])) < values_non_zero:
-            values_non_zero = len(set([i for sublist in waffle for i in sublist]))
-
-    if any(values) != 0:
-
-        # Compute the portion of the total assigned to each category.
-        proportions = [(value / sum(values)) for value in values]
-
-    else:
-        proportions = [1 for v in values]  # Just so it does not throw an error
-
-    return waffle, proportions, height, width, values_non_zero, proportions_non_zero
+        return (
+            self.array,
+            self.height,
+            self.width,
+            self.proportions,
+            self.values_non_zero,
+            self.proportions_non_zero,
+        )
 
 
 def color_mapper(
     categories,
     values,
-    height,
-    width,
     cmap,
     c,
     bc,
     over_represent,
+    height,
+    width,
     values_non_zero,
     proportions_non_zero,
 ):
 
     """
-    Helper function for waffle_plot. Maps colors and colormap to plot and legend.
+    Helper function for waffle_plot. Maps colormap and colors to the plot
+    and the legend.
     """
 
     # Getting number of categories
@@ -318,7 +346,7 @@ def color_mapper(
             c.extend([cmap(x) for x in range(len(categories))][len(c) :])
 
         elif len(c) > len(categories):
-            # Cutting colour list in case we have more colours than categories
+            # Cutting color list in case we have more colors than categories
             c = c[: len(categories)]
 
     # Instead of 'c', using special version 'c_for_cmap', that is cut at
@@ -352,7 +380,7 @@ def prepare_legend_handles(
     legend_handles = []
 
     # Constructing the legend. Depending on the controls, it can have:
-    for i, (category, colour) in enumerate(zip(categories, c)):
+    for i, (category, color) in enumerate(zip(categories, c)):
         if label_v and not label_p:  # Values only, with the sign or without it
             if value_sign == "%":
                 label_str = f"{category} ({values[i]}{value_sign})"
