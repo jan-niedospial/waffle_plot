@@ -20,4 +20,4 @@ I used fragments added in the same post in 18 Jun 2019 by Carlos García Rosales
 
 Some improvements to the function were made by using ChatGPT. Namely removing the numpy library and replacing it with basic python code, removing one intermediate variable, and improving the docstring.
 
-Eduardo H. Salazar Caldentey guided me away from an illegible block of code to something that, at least from a certain distance, looks like actual OOP.
+Eduardo H. Salazar Caldentey guided me away from an illegible block of code to something that, at least from a certain distance, looks like an actual OOP.
