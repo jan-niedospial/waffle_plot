@@ -101,7 +101,7 @@ def waffle_plot(
 
     """
 
-    # Instantiate Waffle class
+    # Instantiate Waffle class with arguments from the function
     waffle = Waffle(
         categories,
         values,
@@ -125,14 +125,16 @@ def waffle_plot(
         save,
     )
 
-    # Create waffle attributes - an array and its' aspects
+    # Create waffle attributes - an array and its' features
     waffle.create_array()
 
-    # Assigne colormaps and colors with color mapper function
+    # Map colormap and colors attributes for the waffle plot and it's legend
     waffle.map_colors()
 
+    # Prepare the legend handles (strings and colors) for the waffle
     waffle.prepare_legend_handles()
 
+    # Plot the waffle
     waffle.plot()
 
 
@@ -147,24 +149,24 @@ class Waffle:
         self,
         categories,
         values,
-        width=10,
-        height=10,
-        cmap=plt.cm.viridis,
-        c=None,
-        bc="w",
-        autoscale=True,
-        over_represent=False,
-        vertical=True,
-        label_v=True,
-        label_p=False,
-        legend_ncols=1,
-        legend_loc=(1.35, 0.685),
-        figsize=(6.4, 4.8),
-        value_sign="",
-        font="DejaVu Sans",
-        fontsize=10,
-        font_c="black",
-        save=None,
+        width,
+        height,
+        cmap,
+        c,
+        bc,
+        autoscale,
+        over_represent,
+        vertical,
+        label_v,
+        label_p,
+        legend_ncols,
+        legend_loc,
+        figsize,
+        value_sign,
+        font,
+        fontsize,
+        font_c,
+        save,
     ):
 
         self.categories = categories
