@@ -4,7 +4,10 @@ The idea behind building it it was to create a reliable, easy-to-use yet customi
 
 As a result the function is slightly over-engineered to account for some unusual scenarios that can easily happen in automated processing.
 
+Please consider checking the examples in Jupyter Notebook file to get a better grasp of how the parameters for the function work in practice.
+
 One thing not covered in the examples is changing the default values for keyword arguments in the function. Please feel free to experiment with them if the current ones don't meet your needs.
+
 
 # Attributions
 The function was based on the brilliant piece of code by Justin Fletcher, posted on Stack Overflow on 03 Jan 2017.
@@ -16,3 +19,5 @@ Discounting pywaffle and attempted use of squarify (another third-party library)
 I used fragments added in the same post in 18 Jun 2019 by Carlos García Rosales, mainly around the value_sign variable.
 
 Some improvements to the function were made by using ChatGPT. Namely removing the numpy library and replacing it with basic python code, removing one intermediate variable, and improving the docstring.
+
+Eduardo H. Salazar Caldentey guided me away from an illegible block of code to something that, at least from a certain distance, looks like actual OOP.

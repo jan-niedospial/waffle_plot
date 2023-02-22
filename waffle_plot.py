@@ -103,119 +103,103 @@ def waffle_plot(
 
     # Instantiate Waffle class
     waffle = Waffle(
-        categories, values, width, height, autoscale, over_represent, vertical
+        categories,
+        values,
+        width,
+        height,
+        cmap,
+        c,
+        bc,
+        autoscale,
+        over_represent,
+        vertical,
+        label_v,
+        label_p,
+        legend_ncols,
+        legend_loc,
+        figsize,
+        value_sign,
+        font,
+        fontsize,
+        font_c,
+        save,
     )
 
     # Create waffle attributes - an array and its' aspects
     waffle.create_array()
 
     # Assigne colormaps and colors with color mapper function
-    cmap, c, c_for_cmap = color_mapper(
-        categories,
-        values,
-        cmap,
-        c,
-        bc,
-        over_represent,
-        waffle.height,
-        waffle.width,
-        waffle.values_non_zero,
-        waffle.proportions_non_zero,
-    )
+    waffle.map_colors()
 
-    # Grid line auto-adjustment
-    if height < 25 and width < 25:
-        linewidth = 1
-    else:
-        linewidth = 0.5
+    waffle.prepare_legend_handles()
 
-    # Create a new figure and ax
-    fig, ax = plt.subplots(figsize=figsize, facecolor=bc)
-
-    if len(c_for_cmap) > 1:
-        # Visualisng the waffle array as waffle plot
-        ax.matshow(waffle.array, cmap=cmap)
-    else:
-        # Visualisng the waffle array as waffle plot, only transparent
-        ax.matshow(waffle.array, alpha=0)
-
-    # With color control, to not get an empty plot for only one not empty
-    # category, a facecolor has to be set. Same for the special case of
-    # empty waffle.
-
-    if len(c_for_cmap) < 1:
-        ax.set_facecolor("lightgrey")
-    elif len(c_for_cmap) < 2:
-        ax.set_facecolor(c[0])
-
-    # Minor ticks
-    ax.set_xticks([x - 0.5 for x in range(waffle.width)], minor=True)
-    ax.set_yticks([x - 0.5 for x in range(waffle.height)], minor=True)
-
-    # Switch the sticking out ticks off (by setting length to 0):
-    ax.tick_params(axis="both", which="both", length=0)
-
-    # Gridlines based on minor ticks
-    ax.grid(which="minor", color=bc, linestyle="-", linewidth=linewidth)
-
-    # Switch off the numbers associated with ticks
-    plt.xticks([])
-    plt.yticks([])
-
-    # variables for the legend
-    values_cumsum = [sum(values[: i + 1]) for i in range(len(values))]
-    total_values = values_cumsum[len(values_cumsum) - 1]
-
-    legend_handles = prepare_legend_handles(
-        categories, values, c, waffle.proportions, label_v, label_p, value_sign
-    )
-
-    # Add the legend
-    l = ax.legend(
-        handles=legend_handles,
-        loc="lower center",
-        ncol=legend_ncols,
-        labelcolor=font_c,
-        bbox_to_anchor=legend_loc,
-    )
-
-    # Font controls for the legend
-    plt.setp(l.texts, family=font, fontsize=fontsize)
-
-    # Option to save an image
-    if save is not None:
-        plt.savefig(save, bbox_inches="tight", dpi=300)
-
-    else:
-        plt.show()
+    waffle.plot()
 
 
 class Waffle:
 
     """
-    Helper class for waffle_plot. Creates a waffle instance of waffle array and array
-    features.
+    Creates a waffle object.
+
     """
 
     def __init__(
-        self, categories, values, width, height, autoscale, over_represent, vertical
+        self,
+        categories,
+        values,
+        width=10,
+        height=10,
+        cmap=plt.cm.viridis,
+        c=None,
+        bc="w",
+        autoscale=True,
+        over_represent=False,
+        vertical=True,
+        label_v=True,
+        label_p=False,
+        legend_ncols=1,
+        legend_loc=(1.35, 0.685),
+        figsize=(6.4, 4.8),
+        value_sign="",
+        font="DejaVu Sans",
+        fontsize=10,
+        font_c="black",
+        save=None,
     ):
+
         self.categories = categories
         self.values = values
         self.width = width
         self.height = height
+        self.cmap = cmap
+        self.c = c
+        self.bc = bc
         self.autoscale = autoscale
         self.over_represent = over_represent
         self.vertical = vertical
+        self.label_v = label_v
+        self.label_p = label_p
+        self.legend_ncols = legend_ncols
+        self.legend_loc = legend_loc
+        self.figsize = figsize
+        self.value_sign = value_sign
+        self.font = font
+        self.fontsize = fontsize
+        self.font_c = font_c
+        self.save = save
 
     def create_array(self):
+
+        """
+        Creates an array attribute and it's features for the waffle.
+        """
 
         # Getting sorted categories and values
         self.categories, self.values = zip(
             *sorted(zip(self.categories, self.values), key=lambda x: x[1], reverse=True)
         )
 
-        self.values_non_zero = len([val for val in self.values if val != 0])
+        self.values_non_zero = len([val for val in self.values if val > 0])
         self.proportions_non_zero = [
             (float(v) / sum(self.values)) for v in self.values if v > 0
         ]
@@ -290,7 +274,7 @@ class Waffle:
                     set([i for sublist in self.array for i in sublist])
                 )
 
-        if any(self.values) != 0:
+        if any(self.values) > 0:
 
             # Compute the portion of the total assigned to each category.
             self.proportions = [(value / sum(self.values)) for value in self.values]
@@ -309,100 +293,160 @@ class Waffle:
             self.proportions_non_zero,
         )
 
+    def map_colors(self):
 
-def color_mapper(
-    categories,
-    values,
-    cmap,
-    c,
-    bc,
-    over_represent,
-    height,
-    width,
-    values_non_zero,
-    proportions_non_zero,
-):
+        """
+        Maps colormap and colors attributes for the waffle plot and it's legend.
+        """
 
-    """
-    Helper function for waffle_plot. Maps colormap and colors to the plot
-    and the legend.
-    """
+        # Getting number of categories
 
-    # Getting number of categories
+        self.cmap = self.cmap.resampled(len(self.categories))
 
-    cmap = cmap.resampled(len(categories))
+        # Getting number of bins. We don't need bins for empty (== 0) categories,
+        # we are only counting non-zero values
 
-    # Getting number of bins. We don't need bins for empty (== 0) categories,
-    # we are only counting non-zero values
+        if self.c is None:
 
-    if c is None:
+            self.c = [self.cmap(x) for x in range(len(self.categories))]
 
-        c = [cmap(x) for x in range(len(categories))]
+        else:
+            # If there are fewer colors than categories...
+            if len(self.c) < len(self.categories):
+                # Extend list c with appropriate number of colors from colormap
+                self.c.extend(
+                    [self.cmap(x) for x in range(len(self.categories))][len(self.c) :]
+                )
 
-    else:
-        # If there are fewer colors than categories...
-        if len(c) < len(categories):
-            # Extend list c with appropriate number of colors from colormap
-            c.extend([cmap(x) for x in range(len(categories))][len(c) :])
+            elif len(self.c) > len(self.categories):
+                # Cutting color list in case we have more colors than categories
+                self.c = self.c[: len(self.categories)]
 
-        elif len(c) > len(categories):
-            # Cutting color list in case we have more colors than categories
-            c = c[: len(categories)]
+        # Instead of 'c', using special version 'c_for_cmap', that is cut at
+        # the length equal to number of bins
 
-    # Instead of 'c', using special version 'c_for_cmap', that is cut at
-    # the length equal to number of bins
+        self.c_for_cmap = self.c[: self.values_non_zero]
 
-    c_for_cmap = c[:values_non_zero]
+        if not self.over_represent and len(self.c_for_cmap) == len(
+            [val for val in self.values if val > 0]
+        ):
+            for i in self.proportions_non_zero:
+                if i < 0.5 * (1 / (self.height * self.width)):
+                    self.c_for_cmap[-1] = self.bc
 
-    if not over_represent and len(c_for_cmap) == len(
-        [val for val in values if val != 0]
-    ):
-        for i in proportions_non_zero:
-            if i < 0.5 * (1 / (height * width)):
-                c_for_cmap[-1] = bc
+        if any(self.values) > 0:
 
-    if any(values) != 0:
+            # Constructing colormap
+            cmap_name = "the_cmap"
+            self.cmap = LinearSegmentedColormap.from_list(
+                cmap_name, self.c_for_cmap, N=self.values_non_zero
+            )
 
-        # Constructing colormap
-        cmap_name = "the_cmap"
-        cmap = LinearSegmentedColormap.from_list(
-            cmap_name, c_for_cmap, N=values_non_zero
+        return self.cmap, self.c, self.c_for_cmap
+
+    def prepare_legend_handles(self):
+
+        """
+        Prepares the legend handles for the waffle.
+        """
+
+        # variables for the legend
+        values_cumsum = [sum(self.values[: i + 1]) for i in range(len(self.values))]
+        total_values = values_cumsum[len(values_cumsum) - 1]
+
+        # Empty list, that will be filled with legend handles
+        self.legend_handles = []
+
+        # Constructing the legend. Depending on the controls, it can have:
+        for i, (category, color) in enumerate(zip(self.categories, self.c)):
+            if (
+                self.label_v and not self.label_p
+            ):  # Values only, with the sign or without it
+                if self.value_sign == "%":
+                    label_str = f"{category} ({self.values[i]}{self.value_sign})"
+                else:
+                    label_str = f"{category} ({self.value_sign}{self.values[i]})"
+
+            elif (
+                self.label_v and self.label_p
+            ):  # Values and percentages calculated automatically
+                if self.value_sign == "%":
+                    label_str = f"{category}: {self.values[i]}{self.value_sign} ({self.proportions[i] * 100:.2f}%)"
+                else:
+                    label_str = f"{category}: {self.value_sign}{self.values[i]} ({self.proportions[i] * 100:.2f}%)"
+
+            elif (
+                not self.label_v and self.label_p
+            ):  # only percentages calculated automatically
+                label_str = f"{category} ({self.proportions[i] * 100:.2f}%)"
+
+            if not self.label_v and not self.label_p:  # The name of the category only
+                label_str = f"{category}"
+
+            self.legend_handles.append(mpatches.Patch(color=self.c[i], label=label_str))
+
+        return self.legend_handles
+
+    def plot(self):
+
+        """
+        Plots the waffle.
+        """
+
+        # Grid line auto-adjustment
+        if self.height < 25 and self.width < 25:
+            linewidth = 1
+        else:
+            linewidth = 0.5
+
+        # Create a new figure and ax
+        fig, ax = plt.subplots(figsize=self.figsize, facecolor=self.bc)
+
+        if len(self.c_for_cmap) > 1:
+            # Visualisng the waffle array as waffle plot
+            ax.matshow(self.array, cmap=self.cmap)
+        else:
+            # Visualisng the waffle array as waffle plot, only transparent
+            ax.matshow(self.array, alpha=0)
+
+        # With color control, to not get an empty plot for only one not empty
+        # category, a facecolor has to be set. Same for the special case of
+        # empty waffle.
+
+        if len(self.c_for_cmap) < 1:
+            ax.set_facecolor("lightgrey")
+        elif len(self.c_for_cmap) < 2:
+            ax.set_facecolor(self.c[0])
+
+        # Minor ticks
+        ax.set_xticks([x - 0.5 for x in range(self.width)], minor=True)
+        ax.set_yticks([x - 0.5 for x in range(self.height)], minor=True)
+
+        # Switch the sticking out ticks off (by setting length to 0):
+        ax.tick_params(axis="both", which="both", length=0)
+
+        # Gridlines based on minor ticks
+        ax.grid(which="minor", color=self.bc, linestyle="-", linewidth=linewidth)
+
+        # Switch off the numbers associated with ticks
+        plt.xticks([])
+        plt.yticks([])
+
+        # Add the legend
+        l = ax.legend(
+            handles=self.legend_handles,
+            loc="lower center",
+            ncol=self.legend_ncols,
+            labelcolor=self.font_c,
+            bbox_to_anchor=self.legend_loc,
         )
 
-    return cmap, c, c_for_cmap
+        # Font controls for the legend
+        plt.setp(l.texts, family=self.font, fontsize=self.fontsize)
 
+        # Option to save an image
+        if self.save is not None:
+            plt.savefig(self.save, bbox_inches="tight", dpi=300)
 
-def prepare_legend_handles(
-    categories, values, c, proportions, label_v, label_p, value_sign
-):
-
-    # Empty list, that will be filled with legend handles
-    legend_handles = []
-
-    # Constructing the legend. Depending on the controls, it can have:
-    for i, (category, color) in enumerate(zip(categories, c)):
-        if label_v and not label_p:  # Values only, with the sign or without it
-            if value_sign == "%":
-                label_str = f"{category} ({values[i]}{value_sign})"
-            else:
-                label_str = f"{category} ({value_sign}{values[i]})"
-
-        elif label_v and label_p:  # Values and percentages calculated automatically
-            if value_sign == "%":
-                label_str = (
-                    f"{category}: {values[i]}{value_sign} ({proportions[i] * 100:.2f}%)"
-                )
-            else:
-                label_str = (
-                    f"{category}: {value_sign}{values[i]} ({proportions[i] * 100:.2f}%)"
-                )
-
-        elif not label_v and label_p:  # only percentages calculated automatically
-            label_str = f"{category} ({proportions[i] * 100:.2f}%)"
-
-        if not label_v and not label_p:  # The name of the category only
-            label_str = f"{category}"
-
-        legend_handles.append(mpatches.Patch(color=c[i], label=label_str))
-
-    return legend_handles
+        else:
+            plt.show()
